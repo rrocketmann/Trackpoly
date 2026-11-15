@@ -145,47 +145,57 @@ ensure(sections.every((section) => section.verts >= 1), "empty section");
 const assigned = sections.reduce((sum, section) => sum + section.verts, 0);
 ensure(assigned + drivebaseCount === model.count, "every vertex is drivebase or a panel");
 
-const nose = { impulse: 2500, x: 0.05, y: 0.05, z: 1.62, nx: 0, ny: 0, nz: 1 };
+const nose = { impulse: 2500, x: 0.05, y: 0.05, z: 1.62, nx: 0, ny: 0, nz: -1 };
 const beforeNose = snapshot(model);
-hit(model, nose, 18);
+hit(model, nose, 8);
 const noseMove = maxMove(beforeNose, model, (v) => model.rest[v * 3 + 2] > 1.15 && model.sectionOf[v] >= 0);
 const tailMove = maxMove(beforeNose, model, (v) => model.rest[v * 3 + 2] < -1.5);
 const driveMove = maxMove(beforeNose, model, (v) => model.sectionOf[v] < 0);
 console.log("nose hit: nose", noseMove, "tail", tailMove, "drivebase", driveMove);
-ensure(noseMove.max > 1 && noseMove.max <= damage.MAX_TRAVEL + 0.02, "nose panel should blast off, moved " + noseMove.max);
-ensure(noseMove.count > 4, "a nose hit should throw a section, not a single vertex");
+ensure(noseMove.max > 0.04 && noseMove.max <= damage.MAX_TRAVEL + 0.02, "nose should dent, moved " + noseMove.max);
+ensure(noseMove.count > 4, "a nose hit should crease a patch, not a single vertex");
 ensure(tailMove.max < 1e-5, "a nose hit should leave the tail");
 ensure(driveMove.max < 1e-6, "drivebase rails should not move");
 
-let noseOut = false;
+let noseIn = false;
+let noseFlew = false;
 for (let v = 0; v < model.count; v++) {
     if (model.sectionOf[v] < 0 || model.rest[v * 3 + 2] < 1.2)
         continue;
-    if (model.pos[v * 3 + 2] > model.rest[v * 3 + 2] + 0.2)
-        noseOut = true;
+    const dz = model.pos[v * 3 + 2] - model.rest[v * 3 + 2];
+    if (dz < -0.03)
+        noseIn = true;
+    if (dz > 0.05)
+        noseFlew = true;
 }
-ensure(noseOut, "nose vertices should fly forward off the car");
+ensure(noseIn, "nose vertices should crush back along the hit");
+ensure(!noseFlew, "nose vertices should stay on the car");
 
 const sideContactZ = 0.2;
-const side = { impulse: 2800, x: -0.7, y: 0.02, z: sideContactZ, nx: -1, ny: 0, nz: 0 };
+const side = { impulse: 2800, x: -0.7, y: 0.02, z: sideContactZ, nx: 1, ny: 0, nz: 0 };
 const sideModel = buildCar();
 const beforeSide = snapshot(sideModel);
-hit(sideModel, side, 16);
-const leftMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] < -0.3 && Math.abs(sideModel.rest[v * 3 + 2] - sideContactZ) < 0.7 && sideModel.sectionOf[v] >= 0);
-const rightMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] > 0.35 && sideModel.sectionOf[v] >= 0);
-console.log("left hit: near", leftMove, "opposite", rightMove);
-ensure(leftMove.max > 1, "left frame should blast off a left impact, moved " + leftMove.max);
-ensure(rightMove.max < 1e-4, "the opposite side should stay put");
+hit(sideModel, side, 8);
+const nearMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] < -0.3 && Math.abs(sideModel.rest[v * 3 + 2] - sideContactZ) < 0.7 && sideModel.sectionOf[v] >= 0);
+const farMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] > 0.35 && sideModel.sectionOf[v] >= 0);
+console.log("side hit: near", nearMove, "opposite", farMove);
+ensure(nearMove.max > 0.04 && nearMove.max <= damage.MAX_TRAVEL + 0.02, "near frame should dent, moved " + nearMove.max);
+ensure(farMove.max < 1e-4, "the opposite side should stay put");
 
-let sideOut = false;
+let sideIn = false;
+let sideFlew = false;
 for (let v = 0; v < sideModel.count; v++) {
     if (sideModel.sectionOf[v] < 0)
         continue;
     const dx = sideModel.pos[v * 3] - beforeSide[v * 3];
-    if (dx < -0.2)
-        sideOut = true;
+    const travel = Math.hypot(dx, sideModel.pos[v * 3 + 1] - beforeSide[v * 3 + 1], sideModel.pos[v * 3 + 2] - beforeSide[v * 3 + 2]);
+    if (dx > 0.03)
+        sideIn = true;
+    if (dx < -0.02 || travel > damage.MAX_TRAVEL + 0.02)
+        sideFlew = true;
 }
-ensure(sideOut, "left impact should throw the shell outward (-X)");
+ensure(sideIn, "a side hit should push the shell inward");
+ensure(!sideFlew, "a side hit should not throw the shell off the car");
 
 let spineClip = 0;
 let wheelClip = 0;
@@ -205,22 +215,22 @@ ensure(wheelClip === 0, "deformed frame entered a wheel: " + wheelClip);
 
 const skirt = new Float32Array([0.3, -0.36, 0.2]);
 const skirtModel = damage.createDamageModel(skirt, []);
-damage.applyContacts(skirtModel, [{ impulse: 9000, x: 0.55, y: -0.36, z: 0.2, nx: -1, ny: 0, nz: 0 }]);
-for (let i = 0; i < 30; i++)
+for (let i = 0; i < 12; i++)
     damage.applyContacts(skirtModel, [{ impulse: 9000, x: 0.55, y: -0.36, z: 0.2, nx: -1, ny: 0, nz: 0 }]);
-console.log("skirt blown off", skirtModel.pos[0], skirtModel.pos[1], skirtModel.pos[2]);
-ensure(skirtModel.pos[0] > 0.8, "skirt panel should fly outward, x=" + skirtModel.pos[0]);
+console.log("skirt dent", skirtModel.pos[0], skirtModel.pos[1], skirtModel.pos[2]);
+ensure(skirtModel.pos[0] < 0.28, "skirt should dent inward, x=" + skirtModel.pos[0]);
+ensure(skirtModel.pos[0] > 0.05, "skirt should stay on the car, x=" + skirtModel.pos[0]);
 ensure(!insideSpine(skirtModel.pos[0], skirtModel.pos[1], skirtModel.pos[2]), "skirt vertex is inside the spine");
 
-const besideWheel = new Float32Array([-0.95, -0.22, 1.35]);
+const besideWheel = new Float32Array([-1.05, -0.22, 1.35]);
 const wheelModel = damage.createDamageModel(besideWheel, []);
-for (let i = 0; i < 20; i++)
-    damage.applyContacts(wheelModel, [{ impulse: 8000, x: -1.1, y: -0.22, z: 1.35, nx: 1, ny: 0, nz: 0 }]);
+for (let i = 0; i < 12; i++)
+    damage.applyContacts(wheelModel, [{ impulse: 8000, x: -1.15, y: -0.22, z: 1.35, nx: 1, ny: 0, nz: 0 }]);
 const wheel = damage.WHEELS[1];
 const wheelDist = Math.hypot(wheelModel.pos[0] - wheel.x, wheelModel.pos[1] - wheel.y, wheelModel.pos[2] - wheel.z);
 console.log("wheel keep-out dist", wheelDist, "pos", wheelModel.pos[0], wheelModel.pos[1], wheelModel.pos[2]);
 ensure(wheelDist >= wheel.r - 1e-3, "frame should stay outside the wheel");
-ensure(wheelModel.pos[0] < -1.1, "panel beside the wheel should fly outward, x=" + wheelModel.pos[0]);
+ensure(wheelModel.pos[0] > -1.05 && wheelModel.pos[0] < -0.7, "panel beside the wheel should dent inward, x=" + wheelModel.pos[0]);
 
 const ground = buildCar();
 const beforeGround = snapshot(ground);
@@ -229,41 +239,12 @@ const groundMove = maxMove(beforeGround, ground, () => true);
 ensure(groundMove.max < 1e-6, "an upward ground contact should not crumple the shell");
 
 const outward = damage.impactDirection({ x: 1.4, y: 0, z: 0, nx: 1, ny: 0, nz: 0 });
-ensure(outward && outward[0] > 0, "a force already pointing off the car stays outward");
+ensure(outward && outward[0] > 0, "a force pointing off the car stays in that direction");
 const inward = damage.impactDirection({ x: 0.4, y: 0, z: 0, nx: -1, ny: 0, nz: 0 });
-ensure(inward && inward[0] > 0, "an inward force is flipped off the car");
-
-// Two panels share an edge. Detach gives the flying panel its own copy, so the
-// piece that stays on the chassis does not follow it.
-const sectionOf = new Int16Array([0, 0, 0, 1, 1, 1, -1]);
-const shared = new Uint16Array([
-    0, 1, 2,
-    2, 1, 3,
-    3, 4, 5,
-    5, 4, 6
-]);
-const plan = damage.planDetach(sectionOf, shared, sectionOf.length);
-ensure(plan.sources.length > sectionOf.length, "shared corners should be duplicated");
-const flyCopies = [];
-const stayCopies = [];
-for (let v = 0; v < plan.sources.length; v++) {
-    if (plan.sources[v] === 5 || plan.sources[v] === 4) {
-        if (plan.owners[v] === 1)
-            flyCopies.push(v);
-        if (plan.owners[v] < 0)
-            stayCopies.push(v);
-    }
-}
-ensure(flyCopies.length >= 1 && stayCopies.length >= 1, "a panel edge should keep a chassis copy and a flying copy");
-let sharedSlot = false;
-for (let i = 0; i < plan.index.length; i += 3) {
-    const owners = [plan.owners[plan.index[i]], plan.owners[plan.index[i + 1]], plan.owners[plan.index[i + 2]]];
-    const flying = owners[0] >= 0 || owners[1] >= 0 || owners[2] >= 0;
-    const staying = owners[0] < 0 || owners[1] < 0 || owners[2] < 0;
-    if (flying && staying)
-        sharedSlot = true;
-}
-ensure(!sharedSlot, "a triangle should not mix a flying corner with a chassis corner");
+ensure(inward && inward[0] < 0, "an inward force dents inward");
+ensure(!damage.planDetach, "body panels should stay attached");
+const damageSource = fs.readFileSync(path.join(root, "car_damage.js"), "utf8");
+ensure(!damageSource.includes("planDetach"), "damage should not split the body into flying faces");
 
 if (failed > 0) {
     console.error(`\n${failed} failure(s)`);

@@ -74,8 +74,34 @@ const wall = sparks.step(wallCar, {
     wheelSkidInfo: [1, 1, 1, 1]
 });
 const hit = alive(wall);
-ensure(hit.n === 1, "a wall hit should spark");
+ensure(hit.n === 1, "a wall hit at the dent threshold should spark once, got " + hit.n);
 ensure(hit.points[0].vx > 0, "wall sparks should spray off the wall");
+
+const crashCar = {};
+const crash = sparks.step(crashCar, {
+    frames: 0,
+    speedKmh: 40,
+    quaternion: identity,
+    position: origin,
+    collisionContacts: [{ impulse: 200, x: 0.75, y: 0, z: 0.2, nx: 1, ny: 0.1, nz: 0 }],
+    wheelContact: [null, null, null, null],
+    wheelSkidInfo: [1, 1, 1, 1]
+});
+const popped = alive(crash);
+ensure(popped.n >= 5, "a hard hit should burst particles, got " + popped.n);
+ensure(popped.points.every((point) => point.vx > 0), "crash particles should leave along the hit");
+
+const quietCar = {};
+const quiet = sparks.step(quietCar, {
+    frames: 1,
+    speedKmh: 40,
+    quaternion: identity,
+    position: origin,
+    collisionContacts: [{ impulse: 200, x: 0.75, y: 0, z: 0.2, nx: 1, ny: 0.1, nz: 0 }],
+    wheelContact: [null, null, null, null],
+    wheelSkidInfo: [1, 1, 1, 1]
+});
+ensure(alive(quiet).n === 1, "the crash burst should not fire on every tick, got " + alive(quiet).n);
 
 const tireCar = {};
 const tire = sparks.step(tireCar, {

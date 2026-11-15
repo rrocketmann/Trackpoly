@@ -28949,9 +28949,7 @@
                                 throw new Error("Unidentified wheel");
                             s.push(new Xi(a,3))
                         }
-                        Gw(this, uw, "f").push(t),
-                        // Physics tire radius is 0.5. Scale the mesh to match so the body clears the road.
-                        t.scale.set(.5 / .331, .5 / .331, .5 / .331)
+                        Gw(this, uw, "f").push(t)
                     }
                 Gw(this, dw, "f").updateMorphTargets(),
                 null != Gw(this, Xv, "f") && (null === (c = Gw(this, Kv, "f")) || void 0 === c || c.controlCar(Gw(this, Yv, "f").id, Gw(this, Xv, "f").up, Gw(this, Xv, "f").right, Gw(this, Xv, "f").down, Gw(this, Xv, "f").left, Gw(this, Xv, "f").reset),
@@ -32529,7 +32527,7 @@
                     memLevel: 9
                 });
                 return l.push(o, !0),
-                "PolyTrack1" + AA(l.result)
+                "Trackpoly1" + AA(l.result)
             }
             static fromSaveString(e) {
                 const t = function(e) {
@@ -32572,7 +32570,7 @@
             static fromExportString(e) {
                 const t = e.replace(/\s+/g, "")
                   , n = function(e) {
-                    const t = "PolyTrack1";
+                    const t = "Trackpoly1";
                     if (!e.startsWith(t))
                         return null;
                     const n = xA(e.substring(10));
@@ -37776,22 +37774,22 @@
                 e = "https://sites.google.com/view/newcargame/";
                 break;
             case "itch":
-                e = "https://kodub.itch.io/polytrack";
+                e = "https://kodub.itch.io/trackpoly";
                 break;
             case "armorgames":
-                e = "https://armorgames.com/polytrack-game/19464";
+                e = "https://armorgames.com/trackpoly-game/19464";
                 break;
             case "gato":
-                e = "https://gato.us/game/poly-track";
+                e = "https://gato.us/game/trackpoly";
                 break;
             case "crazygames":
-                e = "https://www.crazygames.com/game/polytrack";
+                e = "https://www.crazygames.com/game/trackpoly";
                 break;
             case "poki":
-                e = "https://poki.com/en/g/polytrack";
+                e = "https://poki.com/en/g/trackpoly";
                 break;
             case "y8":
-                e = "https://www.y8.com/games/poly_track"
+                e = "https://www.y8.com/games/trackpoly"
             }
             return e
         }
@@ -41440,7 +41438,7 @@ var KT, qT, YT, XT, ZT, JT, $T, eC, tC, nC, iC, rC, aC, sC, oC, lC, cC, hC, dC, 
         ;
         try {
             if (void 0 !== window.BroadcastChannel) {
-                const e = new window.BroadcastChannel("polytrack-single-instance");
+                const e = new window.BroadcastChannel("trackpoly-single-instance");
                 e.addEventListener("message", (t => {
                     "new-instance" == t.data && VD && e.postMessage("conflict"),
                     "conflict" == t.data && (VD = !1)
@@ -41828,10 +41826,6 @@ var KT, qT, YT, XT, ZT, JT, $T, eC, tC, nC, iC, rC, aC, sC, oC, lC, cC, hC, dC, 
         ,
 gN = function(e) {
             kN(this, JD, "f").innerHTML = "";
-            const t = document.createElement("a");
-            t.href = "https://www.sites.google.com/view/newcargame",
-            t.textContent = "sites.google.com/view/newcargame - v0.6.0 is out with multiplayer! Play now!",
-            kN(this, JD, "f").appendChild(t);
             const n = document.createElement("a");
             n.href = "https://opengameart.org/content/sci-fi-theme-1",
             n.target = "_blank",
@@ -41852,17 +41846,12 @@ gN = function(e) {
         ,
         wN = function() {
             if (null != kN(this, sN, "f")) {
-                const e = "https://www.sites.google.com/view/newcargame"
-                  , t = jT()
+                const t = jT()
                   , n = kN(this, sN, "f");
-                n.innerHTML = '<a href="' + e + '">v0.6.0 is out with multiplayer! Play now!</a>'
-                t ? n.textContent = kN(this, jD, "f").get("It seems like you are playing an unofficial version of {0}. For the most up-to-date version please visit the original source:", ["PolyTrack"]) + " " : n.textContent = "",
-                n.className = t ? "warning-message" : "warning-message official-link";
-                const i = document.createElement("a");
-                i.href = e,
-                i.textContent = "v0.6.0 is out with multiplayer! Play now!",
-                n.appendChild(i),
-                n.classList.remove("hidden")
+                t ? (n.textContent = kN(this, jD, "f").get("It seems like you are playing an unofficial version of {0}. For the most up-to-date version please visit the original source:", ["Trackpoly"]) + " ",
+                n.className = "warning-message",
+                n.classList.remove("hidden")) : (n.textContent = "",
+                n.className = "hidden")
             }
             kN(this, oN, "f").classList.remove("hidden");
             for (const e of kN(this, hN, "f"))
@@ -41969,7 +41958,7 @@ gN = function(e) {
                         d.show(e.get("Computer determinism check failed.") + " " + e.get("Some leaderboard features are disabled.") + "\n\n" + e.get("Please try another browser or device."), e.get("Ok"), ( () => {
                             n()
                         }
-                        ))) : d.showNoButtons(e.get("You already have another instance of PolyTrack open.") + "\n\n" + e.get("Please switch to that tab or window to continue."));
+                        ))) : d.showNoButtons(e.get("You already have another instance of Trackpoly open.") + "\n\n" + e.get("Please switch to that tab or window to continue."));
                         for (let e = 0; e < kN(this, lN, "f").length; e++) {
                             const t = kN(this, lN, "f")[e];
                             t.classList.add("button-spawn"),
@@ -44210,17 +44199,17 @@ gN = function(e) {
             try {
                 const e = RU(this, uU, "f").getAllKeys();
                 try {
-                    const e = RU(this, uU, "f").getItem("polytrack_v3_user_slot");
+                    const e = RU(this, uU, "f").getItem("trackpoly_v3_user_slot");
                     if (null != e) {
                         const t = Number.parseInt(e, 10);
                         Number.isSafeInteger(t) && t >= 0 && t <= 2 && (this.saveUserProfileSlot(t),
-                        RU(this, uU, "f").removeItem("polytrack_v3_user_slot"))
+                        RU(this, uU, "f").removeItem("trackpoly_v3_user_slot"))
                     }
                 } catch (e) {
                     console.error(e)
                 }
                 try {
-                    const e = RU(this, uU, "f").getItem("polytrack_v3_settings");
+                    const e = RU(this, uU, "f").getItem("trackpoly_v3_settings");
                     if (null != e) {
                         const t = JSON.parse(e);
                         if (Array.isArray(t)) {
@@ -44235,14 +44224,14 @@ gN = function(e) {
                                 "string" == typeof i && e.set(el[t], i)
                             }
                             this.saveSettings(e),
-                            RU(this, uU, "f").removeItem("polytrack_v3_settings")
+                            RU(this, uU, "f").removeItem("trackpoly_v3_settings")
                         }
                     }
                 } catch (e) {
                     console.error(e)
                 }
                 try {
-                    const e = RU(this, uU, "f").getItem("polytrack_v3_key_bindings");
+                    const e = RU(this, uU, "f").getItem("trackpoly_v3_key_bindings");
                     if (null != e) {
                         const t = JSON.parse(e);
                         if (Array.isArray(t)) {
@@ -44263,23 +44252,23 @@ gN = function(e) {
                                 null !== a && "string" != typeof a || e.set(gk[t], [r, a])
                             }
                             this.saveKeyBindings(e),
-                            RU(this, uU, "f").removeItem("polytrack_v3_key_bindings")
+                            RU(this, uU, "f").removeItem("trackpoly_v3_key_bindings")
                         }
                     }
                 } catch (e) {
                     console.error(e)
                 }
                 for (const t of e)
-                    if (t.startsWith("polytrack_v3_user_")) {
+                    if (t.startsWith("trackpoly_v3_user_")) {
                         let e;
                         switch (t) {
-                        case "polytrack_v3_user_0":
+                        case "trackpoly_v3_user_0":
                             e = 0;
                             break;
-                        case "polytrack_v3_user_1":
+                        case "trackpoly_v3_user_1":
                             e = 1;
                             break;
-                        case "polytrack_v3_user_2":
+                        case "trackpoly_v3_user_2":
                             e = 2;
                             break;
                         default:
@@ -44307,13 +44296,13 @@ gN = function(e) {
                             } catch (e) {
                                 console.error(e)
                             }
-                    } else if (t.startsWith("polytrack_v3_record_"))
+                    } else if (t.startsWith("trackpoly_v3_record_"))
                         try {
                             RU(this, uU, "f").removeItem(t)
                         } catch (e) {
                             console.error(e)
                         }
-                    else if (t.startsWith("polytrack_v3_track_"))
+                    else if (t.startsWith("trackpoly_v3_track_"))
                         try {
                             const e = RU(this, uU, "f").getItem(t);
                             if (null != e) {
@@ -44339,7 +44328,7 @@ gN = function(e) {
                             console.error(e)
                         }
                 try {
-                    RU(this, uU, "f").removeItem("polytrack_v3_migrated")
+                    RU(this, uU, "f").removeItem("trackpoly_v3_migrated")
                 } catch (e) {
                     console.error(e)
                 }
@@ -44369,7 +44358,7 @@ gN = function(e) {
             try {
                 if (null != RU(this, uU, "f").getItem(RU(dU, dU, "f", bU)))
                     return "v4";
-                if (null != RU(this, uU, "f").getItem("polytrack_v3_migrated"))
+                if (null != RU(this, uU, "f").getItem("trackpoly_v3_migrated"))
                     return "v3"
             } catch (e) {
                 console.error(e)
@@ -44379,7 +44368,7 @@ gN = function(e) {
         ,
         pU = {
             value: ( () => {
-                let e = "polytrack_v4_";
+                let e = "trackpoly_v4_";
                 return e += "prod_",
                 e
             }
@@ -45804,7 +45793,7 @@ gN = function(e) {
             "Track is missing starting point": "المسار يفتقد نقطة البداية",
             "Some leaderboard features are disabled.": "تم تعطيل بعض ميزات التصنيف.",
             "Please try another browser or device.": "يرجى محاولة متصفح أو جهاز آخر.",
-            "You already have another instance of PolyTrack open.": "لديك بالفعل نسخة أخرى من PolyTrack مفتوحة.",
+            "You already have another instance of Trackpoly open.": "لديك بالفعل نسخة أخرى من Trackpoly مفتوحة.",
             "Please switch to that tab or window to continue.": "يرجى التبديل إلى تلك التبويب أو النافذة للمتابعة.",
             "Computer determinism check failed.": "فشل فحص التحديد الحاسوبي.",
             "Non-deterministic game assets found.": "تم العثور على موارد اللعبة غير الحاسوبية.",
@@ -46042,7 +46031,7 @@ gN = function(e) {
             "Track is missing starting point": "Strecke hat keinen Startpunkt",
             "Some leaderboard features are disabled.": "Einige Bestenlistenfunktionen sind deaktiviert.",
             "Please try another browser or device.": "Bitte versuchen Sie einen anderen Browser oder ein anderes Gerät.",
-            "You already have another instance of PolyTrack open.": "Sie haben bereits eine andere Instanz von PolyTrack geöffnet.",
+            "You already have another instance of Trackpoly open.": "Sie haben bereits eine andere Instanz von Trackpoly geöffnet.",
             "Please switch to that tab or window to continue.": "Bitte wechseln Sie zu diesem Tab oder Fenster, um fortzufahren.",
             "Computer determinism check failed.": "Der Computer-Determinismus-Check ist fehlgeschlagen.",
             "Non-deterministic game assets found.": "Nicht-deterministische Spiel-Assets gefunden.",
@@ -46280,7 +46269,7 @@ gN = function(e) {
             "Track is missing starting point": "Track is missing starting point",
             "Some leaderboard features are disabled.": "Some leaderboard features are disabled.",
             "Please try another browser or device.": "Please try another browser or device.",
-            "You already have another instance of PolyTrack open.": "You already have another instance of PolyTrack open.",
+            "You already have another instance of Trackpoly open.": "You already have another instance of Trackpoly open.",
             "Please switch to that tab or window to continue.": "Please switch to that tab or window to continue.",
             "Computer determinism check failed.": "Computer determinism check failed.",
             "Non-deterministic game assets found.": "Non-deterministic game assets found.",
@@ -46518,7 +46507,7 @@ gN = function(e) {
             "Track is missing starting point": "Falta el punto de inicio en la pista",
             "Some leaderboard features are disabled.": "Algunas funciones de la tabla de clasificación están desactivadas.",
             "Please try another browser or device.": "Por favor, prueba otro navegador o dispositivo.",
-            "You already have another instance of PolyTrack open.": "Ya tienes otra instancia de PolyTrack abierta.",
+            "You already have another instance of Trackpoly open.": "Ya tienes otra instancia de Trackpoly abierta.",
             "Please switch to that tab or window to continue.": "Por favor, cambia a esa pestaña o ventana para continuar.",
             "Computer determinism check failed.": "Falló la comprobación de determinismo del ordenador.",
             "Non-deterministic game assets found.": "Se encontraron activos de juego no deterministas.",
@@ -46756,7 +46745,7 @@ gN = function(e) {
             "Track is missing starting point": "La piste n'a pas de point de départ",
             "Some leaderboard features are disabled.": "Certaines fonctionnalités du classement sont désactivées.",
             "Please try another browser or device.": "Veuillez essayer un autre navigateur ou appareil.",
-            "You already have another instance of PolyTrack open.": "Vous avez déjà une autre instance de PolyTrack ouverte.",
+            "You already have another instance of Trackpoly open.": "Vous avez déjà une autre instance de Trackpoly ouverte.",
             "Please switch to that tab or window to continue.": "Veuillez basculer vers cet onglet ou cette fenêtre pour continuer.",
             "Computer determinism check failed.": "Échec de la vérification du déterminisme de l'ordinateur.",
             "Non-deterministic game assets found.": "Actifs de jeu non déterministes trouvés.",
@@ -46994,7 +46983,7 @@ gN = function(e) {
             "Track is missing starting point": "Il percorso non ha un punto di partenza",
             "Some leaderboard features are disabled.": "Alcune funzionalità della classifica sono disabilitate.",
             "Please try another browser or device.": "Si prega di provare un altro browser o dispositivo.",
-            "You already have another instance of PolyTrack open.": "Hai già un'altra istanza di PolyTrack aperta.",
+            "You already have another instance of Trackpoly open.": "Hai già un'altra istanza di Trackpoly aperta.",
             "Please switch to that tab or window to continue.": "Si prega di passare a quella scheda o finestra per continuare.",
             "Computer determinism check failed.": "Verifica del determinismo del computer fallita.",
             "Non-deterministic game assets found.": "Asset di gioco non deterministici trovati.",
@@ -47232,7 +47221,7 @@ gN = function(e) {
             "Track is missing starting point": "トラックにスタート地点がありません",
             "Some leaderboard features are disabled.": "一部のリーダーボード機能が無効になっています。",
             "Please try another browser or device.": "別のブラウザまたはデバイスをお試しください。",
-            "You already have another instance of PolyTrack open.": "すでに別のPolyTrackインスタンスが開いています。",
+            "You already have another instance of Trackpoly open.": "すでに別のTrackpolyインスタンスが開いています。",
             "Please switch to that tab or window to continue.": "続行するには、そのタブまたはウィンドウに切り替えてください。",
             "Computer determinism check failed.": "コンピューターの決定論チェックに失敗しました。",
             "Non-deterministic game assets found.": "非決定論的なゲームアセットが見つかりました。",
@@ -47470,7 +47459,7 @@ gN = function(e) {
             "Track is missing starting point": "트랙에 출발 지점이 없습니다",
             "Some leaderboard features are disabled.": "일부 리더보드 기능이 비활성화되었습니다.",
             "Please try another browser or device.": "다른 브라우저나 기기를 시도해보십시오.",
-            "You already have another instance of PolyTrack open.": "이미 다른 PolyTrack 인스턴스가 열려 있습니다.",
+            "You already have another instance of Trackpoly open.": "이미 다른 Trackpoly 인스턴스가 열려 있습니다.",
             "Please switch to that tab or window to continue.": "계속하려면 해당 탭이나 창으로 전환하십시오.",
             "Computer determinism check failed.": "컴퓨터 결정론 검사 실패.",
             "Non-deterministic game assets found.": "결정론적이지 않은 게임 자산 발견.",
@@ -47708,7 +47697,7 @@ gN = function(e) {
             "Track is missing starting point": "Brak punktu startowego na trasie",
             "Some leaderboard features are disabled.": "Niektóre funkcje tabeli wyników są wyłączone.",
             "Please try another browser or device.": "Proszę spróbować inną przeglądarkę lub urządzenie.",
-            "You already have another instance of PolyTrack open.": "Masz już otwartą inną instancję PolyTrack.",
+            "You already have another instance of Trackpoly open.": "Masz już otwartą inną instancję Trackpoly.",
             "Please switch to that tab or window to continue.": "Proszę przełączyć się na ten kartę lub okno, aby kontynuować.",
             "Computer determinism check failed.": "Nie udało się sprawdzić determinizmu komputera.",
             "Non-deterministic game assets found.": "Znaleziono nieterministyczne zasoby gry.",
@@ -47946,7 +47935,7 @@ gN = function(e) {
             "Track is missing starting point": "Pista está sem ponto de partida",
             "Some leaderboard features are disabled.": "Alguns recursos do quadro de líderes estão desativados.",
             "Please try another browser or device.": "Por favor, tente outro navegador ou dispositivo.",
-            "You already have another instance of PolyTrack open.": "Você já tem outra instância do PolyTrack aberta.",
+            "You already have another instance of Trackpoly open.": "Você já tem outra instância do Trackpoly aberta.",
             "Please switch to that tab or window to continue.": "Por favor, mude para aquela guia ou janela para continuar.",
             "Computer determinism check failed.": "Falha na verificação de determinismo do computador.",
             "Non-deterministic game assets found.": "Assets de jogo não determinísticos encontrados.",
@@ -48184,7 +48173,7 @@ gN = function(e) {
             "Track is missing starting point": "A pista não tem ponto de partida",
             "Some leaderboard features are disabled.": "Algumas funcionalidades da tabela de classificação estão desativadas.",
             "Please try another browser or device.": "Por favor, tente outro navegador ou dispositivo.",
-            "You already have another instance of PolyTrack open.": "Já tem outra instância do PolyTrack aberta.",
+            "You already have another instance of Trackpoly open.": "Já tem outra instância do Trackpoly aberta.",
             "Please switch to that tab or window to continue.": "Por favor, mude para essa aba ou janela para continuar.",
             "Computer determinism check failed.": "Falha na verificação de determinismo do computador.",
             "Non-deterministic game assets found.": "Ativos de jogo não determinísticos encontrados.",
@@ -48422,7 +48411,7 @@ gN = function(e) {
             "Track is missing starting point": "Отсутствует стартовая точка на трассе",
             "Some leaderboard features are disabled.": "Некоторые функции таблицы лидеров отключены.",
             "Please try another browser or device.": "Пожалуйста, попробуйте другой браузер или устройство.",
-            "You already have another instance of PolyTrack open.": "У вас уже открыт другой экземпляр PolyTrack.",
+            "You already have another instance of Trackpoly open.": "У вас уже открыт другой экземпляр Trackpoly.",
             "Please switch to that tab or window to continue.": "Пожалуйста, переключитесь на эту вкладку или окно, чтобы продолжить.",
             "Computer determinism check failed.": "Проверка детерминизма компьютера не удалась.",
             "Non-deterministic game assets found.": "Недетерминированные игровые ресурсы найдены.",
@@ -48660,7 +48649,7 @@ gN = function(e) {
             "Track is missing starting point": "Rota başlangıç noktası eksik",
             "Some leaderboard features are disabled.": "Bazı liderlik tablosu özellikleri devre dışı bırakıldı.",
             "Please try another browser or device.": "Lütfen başka bir tarayıcı veya cihaz deneyin.",
-            "You already have another instance of PolyTrack open.": "Zaten PolyTrack'in başka bir örneğini açtınız.",
+            "You already have another instance of Trackpoly open.": "Zaten Trackpoly'in başka bir örneğini açtınız.",
             "Please switch to that tab or window to continue.": "Devam etmek için lütfen o sekmeye veya pencereye geçin.",
             "Computer determinism check failed.": "Bilgisayar belirlenim kontrolü başarısız oldu.",
             "Non-deterministic game assets found.": "Belirlenim dışı oyun varlıkları bulundu.",
@@ -48898,7 +48887,7 @@ gN = function(e) {
             "Track is missing starting point": "В треку відсутня стартова точка",
             "Some leaderboard features are disabled.": "Деякі функції таблиці лідерів вимкнені.",
             "Please try another browser or device.": "Будь ласка, спробуйте інший браузер або пристрій.",
-            "You already have another instance of PolyTrack open.": "У вас вже є інший екземпляр PolyTrack відкритий.",
+            "You already have another instance of Trackpoly open.": "У вас вже є інший екземпляр Trackpoly відкритий.",
             "Please switch to that tab or window to continue.": "Будь ласка, перейдіть на ту вкладку або вікно, щоб продовжити.",
             "Computer determinism check failed.": "Перевірка детермінізму комп'ютера не вдалася.",
             "Non-deterministic game assets found.": "Знайдено недетерміністичні ігрові ресурси.",
@@ -49136,7 +49125,7 @@ gN = function(e) {
             "Track is missing starting point": "赛道缺失起点",
             "Some leaderboard features are disabled.": "一些排行榜功能已禁用。",
             "Please try another browser or device.": "请尝试其他浏览器或设备。",
-            "You already have another instance of PolyTrack open.": "您已经打开了另一个PolyTrack实例。",
+            "You already have another instance of Trackpoly open.": "您已经打开了另一个Trackpoly实例。",
             "Please switch to that tab or window to continue.": "请切换到该选项卡或窗口继续。",
             "Computer determinism check failed.": "计算机确定性检查失败。",
             "Non-deterministic game assets found.": "发现非确定性游戏资源。",
@@ -49374,7 +49363,7 @@ gN = function(e) {
             "Track is missing starting point": "賽道缺少起點",
             "Some leaderboard features are disabled.": "一些排行榜功能已禁用。",
             "Please try another browser or device.": "請嘗試其他瀏覽器或設備。",
-            "You already have another instance of PolyTrack open.": "您已經打開了另一個 PolyTrack 實例。",
+            "You already have another instance of Trackpoly open.": "您已經打開了另一個 Trackpoly 實例。",
             "Please switch to that tab or window to continue.": "請切換到該標籤或窗口以繼續。",
             "Computer determinism check failed.": "電腦確定性檢查失敗。",
             "Non-deterministic game assets found.": "發現非確定性遊戲資產。",

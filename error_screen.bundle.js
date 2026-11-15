@@ -288,7 +288,7 @@
             document.body.appendChild(e);
             const n = document.createElement("div");
             n.className = "title",
-            n.textContent = "Oh no! PolyTrack encountered an unexpected error!",
+            n.textContent = "Oh no! Trackpoly encountered an unexpected error!",
             e.appendChild(n);
             const t = document.createElement("div");
             t.className = "version",

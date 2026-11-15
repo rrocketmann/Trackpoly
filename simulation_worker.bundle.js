@@ -26720,7 +26720,7 @@
                         t = new Ammo.btVector3(-.720832,.27,-1.52686)
                     }
                     const n = "WheelFL" == e || "WheelFR" == e
-                      , i = m.addWheel(t, g, A, n ? .22 : .2, .5, f, n);
+                      , i = m.addWheel(t, g, A, n ? .22 : .2, .331, f, n);
                     Ammo.destroy(t),
                     i.set_m_maxSuspensionTravelCm(1e3),
                     i.set_m_maxSuspensionForce(1e6),
@@ -28790,7 +28790,7 @@
                     memLevel: 9
                 });
                 return l.push(o, !0),
-                "PolyTrack1" + ev(l.result)
+                "Trackpoly1" + ev(l.result)
             }
             static fromSaveString(e) {
                 const t = function(e) {
@@ -28833,7 +28833,7 @@
             static fromExportString(e) {
                 const t = e.replace(/\s+/g, "")
                   , n = function(e) {
-                    const t = "PolyTrack1";
+                    const t = "Trackpoly1";
                     if (!e.startsWith(t))
                         return null;
                     const n = tv(e.substring(10));

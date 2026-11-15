@@ -133,6 +133,51 @@
         );
     }
 
+    // A hard hit pops a handful of sparks off the contact. Gated so a crash
+    // reads as a burst instead of refilling the pool every physics tick.
+    function burst(pool, frame, index, impulse, px, py, pz, nx, ny, nz) {
+        if (!(impulse > 40) || (frame & 7) !== 0)
+            return;
+        const nLen = lengthOf(nx, ny, nz);
+        if (!(nLen > 0.2))
+            return;
+        nx /= nLen;
+        ny /= nLen;
+        nz /= nLen;
+        const ax = Math.abs(nx) < 0.7 ? 1 : 0;
+        const ay = Math.abs(nx) < 0.7 ? 0 : 1;
+        let tx = ay * nz;
+        let ty = -ax * nz;
+        let tz = ax * ny - ay * nx;
+        const tLen = lengthOf(tx, ty, tz);
+        if (!(tLen > 0))
+            return;
+        tx /= tLen;
+        ty /= tLen;
+        tz /= tLen;
+        const bx = ny * tz - nz * ty;
+        const by = nz * tx - nx * tz;
+        const bz = nx * ty - ny * tx;
+        for (let k = 0; k < 5; k++) {
+            const wobble = Math.sin(frame * 0.37 + index * 1.7 + k * 2.3);
+            const wobble2 = Math.sin(frame * 0.19 + k * 1.9);
+            const outward = 4.5 + Math.abs(wobble) * 3.5;
+            const side = wobble * 3.2;
+            const lift = wobble2 * 2.4;
+            const life = 0.22 + 0.16 * (0.5 + 0.5 * wobble2);
+            spawn(
+                pool,
+                px + nx * 0.06 + tx * side * 0.02,
+                py + ny * 0.06,
+                pz + nz * 0.06 + tz * side * 0.02,
+                nx * outward + tx * side + bx * lift,
+                ny * outward + ty * side + by * lift,
+                nz * outward + tz * side + bz * lift,
+                life
+            );
+        }
+    }
+
     function step(car, state) {
         if (!car || !state)
             return null;
@@ -231,6 +276,18 @@
                     slideX,
                     slideY,
                     slideZ
+                );
+                burst(
+                    pool,
+                    frame,
+                    index,
+                    contact.impulse,
+                    origin.x + tmp[0],
+                    origin.y + tmp[1],
+                    origin.z + tmp[2],
+                    nrm[0],
+                    nrm[1],
+                    nrm[2]
                 );
             }
         }

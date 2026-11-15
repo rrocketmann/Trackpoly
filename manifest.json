@@ -1,6 +1,6 @@
 {
-  "name": "PolyTrack",
-  "short_name": "PolyTrack",
+  "name": "Trackpoly",
+  "short_name": "Trackpoly",
   "display": "fullscreen",
   "start_url": ".",
   "background_color": "#000000",
