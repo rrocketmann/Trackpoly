@@ -1,0 +1,272 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+const damage = require("../car_damage.js");
+
+const root = path.resolve(__dirname, "..");
+let failed = 0;
+
+function ensure(condition, message) {
+    if (!condition) {
+        failed += 1;
+        console.error("FAIL:", message);
+    }
+}
+
+function loadGlb(file) {
+    const buf = fs.readFileSync(file);
+    const jsonLength = buf.readUInt32LE(12);
+    const gltf = JSON.parse(buf.slice(20, 20 + jsonLength).toString("utf8"));
+    const binStart = 20 + jsonLength + 8;
+    const view = new DataView(buf.buffer, buf.byteOffset + binStart, buf.length - binStart);
+    const typeCount = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+    const component = {
+        5120: [1, "getInt8"],
+        5121: [1, "getUint8"],
+        5122: [2, "getInt16"],
+        5123: [2, "getUint16"],
+        5125: [4, "getUint32"],
+        5126: [4, "getFloat32"]
+    };
+
+    function accessor(index) {
+        const acc = gltf.accessors[index];
+        const bufferView = gltf.bufferViews[acc.bufferView];
+        const start = (bufferView.byteOffset || 0) + (acc.byteOffset || 0);
+        const [size, method] = component[acc.componentType];
+        const comps = typeCount[acc.type];
+        const stride = bufferView.byteStride || size * comps;
+        const out = new Float32Array(acc.count * comps);
+        for (let i = 0; i < acc.count; i++) {
+            for (let c = 0; c < comps; c++)
+                out[i * comps + c] = view[method](start + i * stride + c * size, true);
+        }
+        return out;
+    }
+
+    return { gltf: gltf, accessor: accessor };
+}
+
+function bodyPositions(parsed) {
+    const mesh = parsed.gltf.meshes[0];
+    const parts = mesh.primitives.map((prim) => parsed.accessor(prim.attributes.POSITION));
+    const length = parts.reduce((sum, part) => sum + part.length, 0);
+    const out = new Float32Array(length);
+    let offset = 0;
+    for (const part of parts) {
+        out.set(part, offset);
+        offset += part.length;
+    }
+    return out;
+}
+
+function suspensionPositions(parsed) {
+    const attr = parsed.accessor(parsed.gltf.meshes[3].primitives[0].attributes.POSITION);
+    const points = [];
+    for (let i = 0; i < attr.length; i += 3)
+        points.push([attr[i], attr[i + 1], attr[i + 2]]);
+    return points;
+}
+
+function buildCar() {
+    const parsed = loadGlb(path.join(root, "models", "car.glb"));
+    const positions = bodyPositions(parsed);
+    return damage.createDamageModel(positions, suspensionPositions(parsed));
+}
+
+function snapshot(model) {
+    return new Float32Array(model.pos);
+}
+
+function maxMove(before, model, predicate) {
+    let max = 0;
+    let count = 0;
+    for (let v = 0; v < model.count; v++) {
+        if (!predicate(v))
+            continue;
+        const i = v * 3;
+        const dist = Math.hypot(model.pos[i] - before[i], model.pos[i + 1] - before[i + 1], model.pos[i + 2] - before[i + 2]);
+        if (dist > max)
+            max = dist;
+        if (dist > 1e-5)
+            count += 1;
+    }
+    return { max: max, count: count };
+}
+
+function sectionNames(model, vertex) {
+    const id = model.sectionOf[vertex];
+    return id < 0 ? "drivebase" : model.sections[id].name;
+}
+
+function hit(model, contact, steps) {
+    for (let i = 0; i < steps; i++)
+        damage.applyContacts(model, [contact]);
+}
+
+function insideSpine(x, y, z) {
+    const gap = damage.SPINE_GAP;
+    const box = damage.SPINE;
+    return x > box.minX - gap && x < box.maxX + gap && y > box.minY - gap && y < box.maxY + gap && z > box.minZ - gap && z < box.maxZ + gap;
+}
+
+function wheelPenetration(x, y, z) {
+    for (const wheel of damage.WHEELS) {
+        const dist = Math.hypot(x - wheel.x, y - wheel.y, z - wheel.z);
+        if (dist < wheel.r - 1e-3)
+            return wheel;
+    }
+    return null;
+}
+
+const bundle = fs.readFileSync(path.join(root, "main.bundle.js"), "utf8");
+const worker = fs.readFileSync(path.join(root, "simulation_worker.bundle.js"), "utf8");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+ensure(html.includes('src="./car_damage.js"'), "index.html should load car_damage.js");
+ensure(bundle.includes("window.TrackpolyDamage.apply"), "visual car should apply body damage");
+ensure(worker.includes("collisionContacts: r._trackpolyImpulses.contacts"), "worker should send contact position and force");
+ensure(worker.includes("getPositionWorldOnA"), "worker should read the contact point");
+ensure(!/for \(const e of t\)\s*Gw\(this, Dv, "m", Uw\)\.call\(this, e\)/.test(bundle) || bundle.includes("collisionImpulses"), "collision sound still reads impulses");
+
+const model = buildCar();
+const sections = damage.describe(model);
+let drivebaseCount = 0;
+for (let v = 0; v < model.count; v++)
+    if (model.sectionOf[v] < 0)
+        drivebaseCount += 1;
+console.log("body verts", model.count, "drivebase", drivebaseCount, "sections", sections.length);
+for (const section of sections)
+    console.log(" ", section.verts.toString().padStart(4), section.name.padEnd(22), "center", section.center.join(","), "size", section.size.join(","));
+
+ensure(drivebaseCount > 15, "drivebase should keep the center rails");
+ensure(sections.length >= 8 && sections.length <= 48, "body should be split into a handful of panels, got " + sections.length);
+ensure(sections.every((section) => section.verts >= 1), "empty section");
+const assigned = sections.reduce((sum, section) => sum + section.verts, 0);
+ensure(assigned + drivebaseCount === model.count, "every vertex is drivebase or a panel");
+
+const nose = { impulse: 2500, x: 0.05, y: 0.05, z: 1.62, nx: 0, ny: 0, nz: 1 };
+const beforeNose = snapshot(model);
+hit(model, nose, 18);
+const noseMove = maxMove(beforeNose, model, (v) => model.rest[v * 3 + 2] > 1.15 && model.sectionOf[v] >= 0);
+const tailMove = maxMove(beforeNose, model, (v) => model.rest[v * 3 + 2] < -1.5);
+const driveMove = maxMove(beforeNose, model, (v) => model.sectionOf[v] < 0);
+console.log("nose hit: nose", noseMove, "tail", tailMove, "drivebase", driveMove);
+ensure(noseMove.max > 1 && noseMove.max <= damage.MAX_TRAVEL + 0.02, "nose panel should blast off, moved " + noseMove.max);
+ensure(noseMove.count > 4, "a nose hit should throw a section, not a single vertex");
+ensure(tailMove.max < 1e-5, "a nose hit should leave the tail");
+ensure(driveMove.max < 1e-6, "drivebase rails should not move");
+
+let noseOut = false;
+for (let v = 0; v < model.count; v++) {
+    if (model.sectionOf[v] < 0 || model.rest[v * 3 + 2] < 1.2)
+        continue;
+    if (model.pos[v * 3 + 2] > model.rest[v * 3 + 2] + 0.2)
+        noseOut = true;
+}
+ensure(noseOut, "nose vertices should fly forward off the car");
+
+const sideContactZ = 0.2;
+const side = { impulse: 2800, x: -0.7, y: 0.02, z: sideContactZ, nx: -1, ny: 0, nz: 0 };
+const sideModel = buildCar();
+const beforeSide = snapshot(sideModel);
+hit(sideModel, side, 16);
+const leftMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] < -0.3 && Math.abs(sideModel.rest[v * 3 + 2] - sideContactZ) < 0.7 && sideModel.sectionOf[v] >= 0);
+const rightMove = maxMove(beforeSide, sideModel, (v) => sideModel.rest[v * 3] > 0.35 && sideModel.sectionOf[v] >= 0);
+console.log("left hit: near", leftMove, "opposite", rightMove);
+ensure(leftMove.max > 1, "left frame should blast off a left impact, moved " + leftMove.max);
+ensure(rightMove.max < 1e-4, "the opposite side should stay put");
+
+let sideOut = false;
+for (let v = 0; v < sideModel.count; v++) {
+    if (sideModel.sectionOf[v] < 0)
+        continue;
+    const dx = sideModel.pos[v * 3] - beforeSide[v * 3];
+    if (dx < -0.2)
+        sideOut = true;
+}
+ensure(sideOut, "left impact should throw the shell outward (-X)");
+
+let spineClip = 0;
+let wheelClip = 0;
+for (const crashed of [model, sideModel]) {
+    for (let v = 0; v < crashed.count; v++) {
+        if (crashed.sectionOf[v] < 0)
+            continue;
+        const x = crashed.pos[v * 3], y = crashed.pos[v * 3 + 1], z = crashed.pos[v * 3 + 2];
+        if (insideSpine(x, y, z))
+            spineClip += 1;
+        if (wheelPenetration(x, y, z))
+            wheelClip += 1;
+    }
+}
+ensure(spineClip === 0, "deformed frame entered the drivebase spine: " + spineClip);
+ensure(wheelClip === 0, "deformed frame entered a wheel: " + wheelClip);
+
+const skirt = new Float32Array([0.3, -0.36, 0.2]);
+const skirtModel = damage.createDamageModel(skirt, []);
+damage.applyContacts(skirtModel, [{ impulse: 9000, x: 0.55, y: -0.36, z: 0.2, nx: -1, ny: 0, nz: 0 }]);
+for (let i = 0; i < 30; i++)
+    damage.applyContacts(skirtModel, [{ impulse: 9000, x: 0.55, y: -0.36, z: 0.2, nx: -1, ny: 0, nz: 0 }]);
+console.log("skirt blown off", skirtModel.pos[0], skirtModel.pos[1], skirtModel.pos[2]);
+ensure(skirtModel.pos[0] > 0.8, "skirt panel should fly outward, x=" + skirtModel.pos[0]);
+ensure(!insideSpine(skirtModel.pos[0], skirtModel.pos[1], skirtModel.pos[2]), "skirt vertex is inside the spine");
+
+const besideWheel = new Float32Array([-0.95, -0.22, 1.35]);
+const wheelModel = damage.createDamageModel(besideWheel, []);
+for (let i = 0; i < 20; i++)
+    damage.applyContacts(wheelModel, [{ impulse: 8000, x: -1.1, y: -0.22, z: 1.35, nx: 1, ny: 0, nz: 0 }]);
+const wheel = damage.WHEELS[1];
+const wheelDist = Math.hypot(wheelModel.pos[0] - wheel.x, wheelModel.pos[1] - wheel.y, wheelModel.pos[2] - wheel.z);
+console.log("wheel keep-out dist", wheelDist, "pos", wheelModel.pos[0], wheelModel.pos[1], wheelModel.pos[2]);
+ensure(wheelDist >= wheel.r - 1e-3, "frame should stay outside the wheel");
+ensure(wheelModel.pos[0] < -1.1, "panel beside the wheel should fly outward, x=" + wheelModel.pos[0]);
+
+const ground = buildCar();
+const beforeGround = snapshot(ground);
+hit(ground, { impulse: 5000, x: 0.4, y: -0.35, z: 0.4, nx: 0, ny: 1, nz: 0 }, 20);
+const groundMove = maxMove(beforeGround, ground, () => true);
+ensure(groundMove.max < 1e-6, "an upward ground contact should not crumple the shell");
+
+const outward = damage.impactDirection({ x: 1.4, y: 0, z: 0, nx: 1, ny: 0, nz: 0 });
+ensure(outward && outward[0] > 0, "a force already pointing off the car stays outward");
+const inward = damage.impactDirection({ x: 0.4, y: 0, z: 0, nx: -1, ny: 0, nz: 0 });
+ensure(inward && inward[0] > 0, "an inward force is flipped off the car");
+
+// Two panels share an edge. Detach gives the flying panel its own copy, so the
+// piece that stays on the chassis does not follow it.
+const sectionOf = new Int16Array([0, 0, 0, 1, 1, 1, -1]);
+const shared = new Uint16Array([
+    0, 1, 2,
+    2, 1, 3,
+    3, 4, 5,
+    5, 4, 6
+]);
+const plan = damage.planDetach(sectionOf, shared, sectionOf.length);
+ensure(plan.sources.length > sectionOf.length, "shared corners should be duplicated");
+const flyCopies = [];
+const stayCopies = [];
+for (let v = 0; v < plan.sources.length; v++) {
+    if (plan.sources[v] === 5 || plan.sources[v] === 4) {
+        if (plan.owners[v] === 1)
+            flyCopies.push(v);
+        if (plan.owners[v] < 0)
+            stayCopies.push(v);
+    }
+}
+ensure(flyCopies.length >= 1 && stayCopies.length >= 1, "a panel edge should keep a chassis copy and a flying copy");
+let sharedSlot = false;
+for (let i = 0; i < plan.index.length; i += 3) {
+    const owners = [plan.owners[plan.index[i]], plan.owners[plan.index[i + 1]], plan.owners[plan.index[i + 2]]];
+    const flying = owners[0] >= 0 || owners[1] >= 0 || owners[2] >= 0;
+    const staying = owners[0] < 0 || owners[1] < 0 || owners[2] < 0;
+    if (flying && staying)
+        sharedSlot = true;
+}
+ensure(!sharedSlot, "a triangle should not mix a flying corner with a chassis corner");
+
+if (failed > 0) {
+    console.error(`\n${failed} failure(s)`);
+    process.exit(1);
+}
+console.log("\nAll car damage checks passed.");
