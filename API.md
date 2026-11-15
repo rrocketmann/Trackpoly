@@ -1,4 +1,4 @@
-# Trackpoly 0.5.2 Legacy API (Kodub backend)
+# PolyTrack 0.5.2 Legacy API (Kodub backend)
 
 This document reverse-engineers the bundled 0.5.2 client (`main.bundle.js`) so you can stand up a drop-in replacement for the original Kodub API. All line references below point back to `main.bundle.js` for traceability.
 

@@ -1,6 +1,6 @@
-# Trackpoly
+# PolyTrack
 
-Trackpoly is a browser driving game. The playable build is the static site in this repository: `index.html`, `main.bundle.js`, the simulation worker, audio, models, and tracks.
+PolyTrack is a browser driving game. The playable build is the static site in this repository: `index.html`, `main.bundle.js`, the simulation worker, audio, models, and tracks.
 
 ## Play
 

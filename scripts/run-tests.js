@@ -26,14 +26,22 @@ function listTrackFiles(dir) {
     .map((entry) => entry.name);
 }
 
-addTest("Required build artifacts exist", () => {
-  ["index.html", "main.bundle.js", "error_screen.bundle.js"].forEach((file) => {
-    const exists = fs.existsSync(path.join(repoRoot, file));
-    ensure(exists, `Expected ${file} to exist`);
+addTest("Required 0.6.3 build artifacts exist", () => {
+  [
+    "index.html",
+    "main.bundle.js",
+    "error_screen.bundle.js",
+    "simulation_worker.bundle.js",
+    "polytrack_physics.wasm",
+    "lib/polytrack_physics.js"
+  ].forEach((file) => {
+    ensure(fs.existsSync(path.join(repoRoot, file)), `Expected ${file} to exist`);
   });
+  const wasm = fs.readFileSync(path.join(repoRoot, "polytrack_physics.wasm"));
+  ensure(wasm.slice(0, 4).toString("binary") === "\0asm", "polytrack_physics.wasm is not wasm");
 });
 
-addTest("Official and community track directories contain tracks", () => {
+addTest("Official and community track directories contain 0.6.3 tracks", () => {
   const officialDir = path.join(repoRoot, "tracks", "official");
   const communityDir = path.join(repoRoot, "tracks", "community");
   [officialDir, communityDir].forEach((dir) => {
@@ -41,46 +49,30 @@ addTest("Official and community track directories contain tracks", () => {
   });
   const officialTracks = listTrackFiles(officialDir);
   const communityTracks = listTrackFiles(communityDir);
-  ensure(
-    officialTracks.length > 0,
-    "tracks/official must contain at least one .track file"
-  );
-  ensure(
-    communityTracks.length > 0,
-    "tracks/community must contain at least one .track file"
-  );
+  ["summer1.track", "desert5.track", "winter5.track"].forEach((name) => {
+    ensure(officialTracks.includes(name), `tracks/official is missing ${name}`);
+  });
+  ensure(communityTracks.length > 0, "tracks/community must contain at least one .track file");
 });
 
-addTest("Dynamic track loader present", () => {
-  ensure(
-    bundle.includes('trackDirectoryLoader("tracks/official/"') &&
-      bundle.includes('trackDirectoryLoader("tracks/community/"'),
-    "Dynamic track loader helper not found in bundle"
-  );
-});
-
-addTest("Leaderboard fetch uses null verified flag", () => {
-  const callSignature =
-    '.getLeaderboard(EC(this, $T, "f").getCurrentUserProfile().tokenHash, EC(this, YT, "f"), r, n, null)';
-  ensure(
-    bundle.includes(callSignature),
-    "Leaderboard fetch should pass null for verified filter"
-  );
-});
-
-addTest("HTML Unblocked Games host allowed", () => {
-  ensure(
-    bundle.includes("htmlunblockedgames\\.github\\.io"),
-    "Authorized host list is missing htmlunblockedgames.github.io"
-  );
-});
-
-addTest("Leaderboard verified-state UI removed", () => {
-  ensure(
-    !bundle.includes('.button.only-verified') &&
-      !bundle.includes('verified-state pending'),
-    "Leaderboard verified UI remnants still found"
-  );
+addTest("Client is PolyTrack 0.6.3", () => {
+  const index = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8");
+  const worker = fs.readFileSync(path.join(repoRoot, "simulation_worker.bundle.js"), "utf8");
+  const manifest = fs.readFileSync(path.join(repoRoot, "manifest.json"), "utf8");
+  const physics = fs.readFileSync(path.join(repoRoot, "lib/polytrack_physics.js"), "utf8");
+  ensure(index.includes("<title>PolyTrack</title>"), "Page title should be PolyTrack");
+  ensure(!index.includes("car_damage.js"), "0.6.3 page should not load car_damage.js");
+  ensure(!index.includes("car_sparks.js") && !index.includes("car_smoke.js"), "Sparks and smoke scripts should stay unloaded");
+  ensure(index.includes("main.bundle.js"), "Page should load main.bundle.js");
+  ensure(bundle.includes('version:"0.6.3"'), "Main bundle should start the 0.6.3 simulation");
+  ensure(worker.includes('if("0.6.3"!=i)'), "Worker should reject any version other than 0.6.3");
+  ensure(manifest.includes('"name": "PolyTrack"'), "Manifest name should be PolyTrack");
+  ensure(physics.includes("polytrack_physics.wasm"), "Physics loader should fetch polytrack_physics.wasm");
+  const wasm = fs.readFileSync(path.join(repoRoot, "polytrack_physics.wasm"));
+  const soft = Buffer.from([0x43, 0x00, 0x00, 0x40, 0x41]);
+  const stock = Buffer.from([0x43, 0x00, 0x00, 0x48, 0x42]);
+  ensure(wasm.includes(soft), "Suspension stiffness should be the soft rate 12");
+  ensure(!wasm.includes(stock), "Stock suspension stiffness 50 should be gone");
 });
 
 (async () => {

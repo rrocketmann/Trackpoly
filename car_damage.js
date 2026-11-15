@@ -32,8 +32,8 @@
     const CLEARANCE = 0.03;
     const RADIUS = 0.75;
     const IMPULSE_MIN = 40;
-    // Squared so a brush above the dent threshold barely moves the shell and a
-    // wall hit creases it. Travel stays short so the panel cannot leave the car.
+    // Squared so a hard hit dents the panel. A light bump stays under the
+    // threshold. Travel stays on the car; the spine and tires still stop it.
     const IMPULSE_SCALE = 0.00000031;
     const STEP_CAP = 0.16;
     const MAX_TRAVEL = 0.22;
@@ -249,7 +249,60 @@
         return [cx + vx * scale, cy + vy * scale, cz + vz * scale];
     }
 
-    function constrainPoint(rx, ry, rz, x, y, z, model) {
+    function clipBox(x0, y0, z0, x1, y1, z1, minX, minY, minZ, maxX, maxY, maxZ) {
+        const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+        let enter = 0, exit = 1;
+        const slabs = [
+            [x0, dx, minX, maxX],
+            [y0, dy, minY, maxY],
+            [z0, dz, minZ, maxZ]
+        ];
+        for (let a = 0; a < 3; a++) {
+            const origin = slabs[a][0], delta = slabs[a][1], lo = slabs[a][2], hi = slabs[a][3];
+            if (delta < 1e-8 && delta > -1e-8) {
+                if (origin <= lo || origin >= hi)
+                    return null;
+                continue;
+            }
+            let near = (lo - origin) / delta;
+            let far = (hi - origin) / delta;
+            if (near > far) {
+                const swap = near;
+                near = far;
+                far = swap;
+            }
+            if (near > enter)
+                enter = near;
+            if (far < exit)
+                exit = far;
+            if (enter > exit)
+                return null;
+        }
+        if (exit < 0 || enter > 1 || enter < 0)
+            return null;
+        const t = enter > 1e-4 ? enter - 1e-4 : 0;
+        return [x0 + dx * t, y0 + dy * t, z0 + dz * t];
+    }
+
+    function clipSphere(x0, y0, z0, x1, y1, z1, cx, cy, cz, radius) {
+        const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+        const fx = x0 - cx, fy = y0 - cy, fz = z0 - cz;
+        const a = dx * dx + dy * dy + dz * dz;
+        const c = fx * fx + fy * fy + fz * fz - radius * radius;
+        if (!(a > 1e-12) || c < 0)
+            return null;
+        const b = 2 * (fx * dx + fy * dy + fz * dz);
+        const disc = b * b - 4 * a * c;
+        if (disc < 0)
+            return null;
+        const t = (-b - Math.sqrt(disc)) / (2 * a);
+        if (t < 0 || t > 1)
+            return null;
+        const stop = t > 1e-4 ? t - 1e-4 : 0;
+        return [x0 + dx * stop, y0 + dy * stop, z0 + dz * stop];
+    }
+
+    function constrainPoint(rx, ry, rz, x0, y0, z0, x, y, z, model) {
         let dx = x - rx, dy = y - ry, dz = z - rz;
         let travel = lengthOf(dx, dy, dz);
         if (travel > MAX_TRAVEL) {
@@ -257,6 +310,25 @@
             x = rx + dx * scale;
             y = ry + dy * scale;
             z = rz + dz * scale;
+        }
+        const blocked = clipBox(
+            x0, y0, z0, x, y, z,
+            SPINE.minX - SPINE_GAP, SPINE.minY - SPINE_GAP, SPINE.minZ - SPINE_GAP,
+            SPINE.maxX + SPINE_GAP, SPINE.maxY + SPINE_GAP, SPINE.maxZ + SPINE_GAP
+        );
+        if (blocked) {
+            x = blocked[0];
+            y = blocked[1];
+            z = blocked[2];
+        }
+        for (let w = 0; w < WHEELS.length; w++) {
+            const wheel = WHEELS[w];
+            const tire = clipSphere(x0, y0, z0, x, y, z, wheel.x, wheel.y, wheel.z, wheel.r);
+            if (tire) {
+                x = tire[0];
+                y = tire[1];
+                z = tire[2];
+            }
         }
         for (let iter = 0; iter < 3; iter++) {
             const spineMinX = SPINE.minX - SPINE_GAP;
@@ -334,8 +406,8 @@
         nx /= mag;
         ny /= mag;
         nz /= mag;
-        // Tires holding the car up are not a crash. The remaining force is the
-        // direction the shell dents. It is not flipped, so a panel cannot fly off.
+        // Tires holding the car up are not a crash. The remaining vector is
+        // the push into the panel, so the shell crushes along it and stays on.
         if (ny > 0.65 && lengthOf(nx, nz, 0) < 0.55)
             return null;
         return [nx, ny, nz];
@@ -398,7 +470,7 @@
                 ay *= scale;
                 az *= scale;
             }
-            const next = constrainPoint(rest[i], rest[i + 1], rest[i + 2], pos[i] + ax, pos[i + 1] + ay, pos[i + 2] + az, model);
+            const next = constrainPoint(rest[i], rest[i + 1], rest[i + 2], pos[i], pos[i + 1], pos[i + 2], pos[i] + ax, pos[i + 1] + ay, pos[i + 2] + az, model);
             if (next.x !== pos[i] || next.y !== pos[i + 1] || next.z !== pos[i + 2]) {
                 pos[i] = next.x;
                 pos[i + 1] = next.y;
@@ -482,7 +554,7 @@
                 body.geometry.computeBoundingBox();
         } catch (error) {
             failed = true;
-            console.error("Trackpoly body damage disabled", error);
+            console.error("Body damage disabled", error);
         }
     }
 

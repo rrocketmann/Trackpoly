@@ -124,9 +124,16 @@ const bundle = fs.readFileSync(path.join(root, "main.bundle.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "simulation_worker.bundle.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 ensure(html.includes('src="./car_damage.js"'), "index.html should load car_damage.js");
+ensure(!html.includes("car_sparks.js"), "page should not load sparks");
+ensure(!html.includes("car_smoke.js"), "page should not load smoke");
 ensure(bundle.includes("window.TrackpolyDamage.apply"), "visual car should apply body damage");
+ensure(!bundle.includes("trackpolySyncSparks") && !bundle.includes("trackpolyDropSparks"), "the visual car should not draw sparks");
+ensure(!bundle.includes("trackpolySyncSmoke") && !bundle.includes("trackpolyDropSmoke"), "the visual car should not draw smoke");
 ensure(worker.includes("collisionContacts: r._trackpolyImpulses.contacts"), "worker should send contact position and force");
 ensure(worker.includes("getPositionWorldOnA"), "worker should read the contact point");
+ensure(worker.includes("3 + 482 * comp * comp"), "spring rate should rise with compression");
+ensure(worker.includes("sign = carIs0 ? 1 : -1"), "a hit should push the shell inward");
+ensure(worker.includes("m_suspensionLength > .12"), "airborne wheels should stop at the original droop");
 ensure(!/for \(const e of t\)\s*Gw\(this, Dv, "m", Uw\)\.call\(this, e\)/.test(bundle) || bundle.includes("collisionImpulses"), "collision sound still reads impulses");
 
 const model = buildCar();
@@ -170,6 +177,29 @@ for (let v = 0; v < model.count; v++) {
 }
 ensure(noseIn, "nose vertices should crush back along the hit");
 ensure(!noseFlew, "nose vertices should stay on the car");
+
+const tailHit = { impulse: 2500, x: 0.05, y: -0.05, z: -1.85, nx: 0, ny: 0, nz: 1 };
+const tailModel = buildCar();
+const beforeTail = snapshot(tailModel);
+hit(tailModel, tailHit, 8);
+const tailCrush = maxMove(beforeTail, tailModel, (v) => tailModel.rest[v * 3 + 2] < -1.55 && tailModel.sectionOf[v] >= 0);
+const noseFromTail = maxMove(beforeTail, tailModel, (v) => tailModel.rest[v * 3 + 2] > 1.15 && tailModel.sectionOf[v] >= 0);
+console.log("tail hit", tailCrush, "nose", noseFromTail);
+let tailIn = false;
+let tailLonger = false;
+for (let v = 0; v < tailModel.count; v++) {
+    if (tailModel.sectionOf[v] < 0 || tailModel.rest[v * 3 + 2] > -1.55)
+        continue;
+    const dz = tailModel.pos[v * 3 + 2] - tailModel.rest[v * 3 + 2];
+    if (dz > 0.03)
+        tailIn = true;
+    if (dz < -0.02)
+        tailLonger = true;
+}
+ensure(tailCrush.max > 0.04 && tailCrush.max <= damage.MAX_TRAVEL + 0.02, "a rear hit should dent the tail, moved " + tailCrush.max);
+ensure(tailIn, "a rear hit should crush the tail forward");
+ensure(!tailLonger, "a rear hit should not stretch the tail");
+ensure(noseFromTail.max < 1e-5, "a rear hit should leave the nose");
 
 const sideContactZ = 0.2;
 const side = { impulse: 2800, x: -0.7, y: 0.02, z: sideContactZ, nx: 1, ny: 0, nz: 0 };
@@ -238,6 +268,30 @@ hit(ground, { impulse: 5000, x: 0.4, y: -0.35, z: 0.4, nx: 0, ny: 1, nz: 0 }, 20
 const groundMove = maxMove(beforeGround, ground, () => true);
 ensure(groundMove.max < 1e-6, "an upward ground contact should not crumple the shell");
 
+const bump = buildCar();
+const beforeBump = snapshot(bump);
+hit(bump, { impulse: 12, x: 0.05, y: 0.05, z: 1.62, nx: 0, ny: 0, nz: -1 }, 4);
+const bumpMove = maxMove(beforeBump, bump, () => true);
+ensure(bumpMove.max < 1e-6, "a light bump should not dent the shell, moved " + bumpMove.max);
+
+const moderate = buildCar();
+const beforeModerate = snapshot(moderate);
+hit(moderate, { impulse: 48, x: 0.05, y: 0.05, z: 1.62, nx: 0, ny: 0, nz: -1 }, 1);
+const moderateMove = maxMove(beforeModerate, moderate, (v) => moderate.rest[v * 3 + 2] > 1.15 && moderate.sectionOf[v] >= 0);
+console.log("moderate nose", moderateMove);
+ensure(moderateMove.max < 0.01, "a moderate hit should not fold the shell, moved " + moderateMove.max);
+
+function springHold(comp) {
+    return (3 + 482 * comp * comp) * comp;
+}
+const rideHold = springHold(0.16);
+const shallowHold = springHold(0.08);
+const deepHold = springHold(0.2);
+console.log("spring hold ride", rideHold, "shallow", shallowHold, "deep", deepHold);
+ensure(Math.abs(rideHold - 9.82 / 4) < 0.03, "the lower ride should still support the car, k*c=" + rideHold);
+ensure(shallowHold < 1, "a small compression should not yet hold the car, k*c=" + shallowHold);
+ensure(deepHold > rideHold * 1.4, "a deeper compression should push harder than the sagged ride, k*c=" + deepHold);
+
 const outward = damage.impactDirection({ x: 1.4, y: 0, z: 0, nx: 1, ny: 0, nz: 0 });
 ensure(outward && outward[0] > 0, "a force pointing off the car stays in that direction");
 const inward = damage.impactDirection({ x: 0.4, y: 0, z: 0, nx: -1, ny: 0, nz: 0 });
@@ -245,6 +299,13 @@ ensure(inward && inward[0] < 0, "an inward force dents inward");
 ensure(!damage.planDetach, "body panels should stay attached");
 const damageSource = fs.readFileSync(path.join(root, "car_damage.js"), "utf8");
 ensure(!damageSource.includes("planDetach"), "damage should not split the body into flying faces");
+ensure(damageSource.includes("const RADIUS = 0.75"), "dent radius should stay local");
+ensure(damageSource.includes("const IMPULSE_MIN = 40"), "light bumps should stay under the dent threshold");
+ensure(damageSource.includes("const IMPULSE_SCALE = 0.00000031"), "dent strength should stay on the milder scale");
+ensure(damageSource.includes("const STEP_CAP = 0.16"), "one hit should not fold a panel in a single step");
+ensure(damageSource.includes("const MAX_TRAVEL = 0.22"), "a panel should not travel past the milder cap");
+ensure(!damageSource.includes("refreshWear"), "damage should not track smoke wear");
+ensure(!/Math\.random\s*\(/.test(damageSource) && !/Math\.hypot\s*\(/.test(damageSource), "damage math should stay deterministic");
 
 if (failed > 0) {
     console.error(`\n${failed} failure(s)`);
